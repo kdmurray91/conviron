@@ -1,6 +1,6 @@
 from spcControl import (
         chamber,
-        heliospecrta,
+        heliospectra,
         monitor,
         )
 
