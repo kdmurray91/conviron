@@ -133,13 +133,16 @@ def communicate(line):
     telnet.close()
 
 
-def log():
+def log(line):
     """Get values back from convirons"""
     config = get_config(get_config_file())
     cmd_str = "%s %s " % (config.get("Conviron", "GetCommand"),
                           config.get("Conviron", "DeviceID"))
     # Establish connection
     telnet = _connect(config)
+    # Calculate what the set temp should be:
+    line_temp = line[config.getint("GlobalCsvFields", "Temperature")]
+    line_temp = float(line_temp)
     # Get temp
     temp_cmd = bytes("%s %s\n" %
         (cmd_str, config.get("Logging", "TempSequence")),
@@ -180,11 +183,14 @@ def log():
     # We're done w/ the telnet handle, close it here to avoid timeout issues
     telnet.close()
     # Do the logging to a csv file
+    datefield = config.getint("GlobalCsvFields", "Date")
+    timefield = config.getint("GlobalCsvFields", "Time")
+    line_time = " ".join([line[datefield], line[timefield]])
     now = datetime.datetime.now()
-    date = now.strftime(config.get("Logging", "DateFmt"))
-    time = now.strftime(config.get("Logging", "TimeFmt"))
+    date = now.strftime(config.get("Logging", "TimestampFmt"))
     logfile = config.get("Logging", "LogFile")
-    loghdr = config.get("Logging", "CSVLogHeader").strip().split(',')
+    loghdr = ["Timestamp", "LineTime", "Temp", "SetTemp", "LineTemp", "RH",
+              "SetRH", "PAR"]
     if path.exists(logfile):
         # don't clobber file, use append mode & don't write header
         lfh = open(logfile, "a", newline='')
@@ -195,13 +201,17 @@ def log():
         lcsv = DictWriter(lfh, loghdr)
         lcsv.writeheader()
     lcsv.writerow({
-        "Date": date,
-        "Time": time,
+        "Timestamp": date,
+        "LineTime": line_time.
         "Temp": temp,
         "SetTemp": temp_set,
+        "LineTemp": line_temp,
         "RH": rh,
         "SetRH": rh_set,
         "PAR": par
     })
     # close things that need closing
     lfh.close()
+    if float(line_temp) != float(temp_set):
+        raise RuntimeError("Update failed. Set temp is {}, in file {}".format(
+            temp_set, line_temp))

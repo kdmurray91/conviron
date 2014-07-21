@@ -66,7 +66,7 @@ def communicate_line(line):
             step = "Update Conviron"
             chamber.communicate(line)
             step = "Log Conviron Conditions"
-            chamber.log()
+            chamber.log(line)
         LOG.info(log_str + " Success")
         print("Success")
         log_tuple = (chamber_num, "FALSE", log_str)
